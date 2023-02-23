@@ -19,4 +19,17 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+    <None Include=".gitignore" />
+    <None Include=".gitattributes" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="misc\header.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="misc\social_preview.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

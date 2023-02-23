@@ -135,6 +135,15 @@
   <ItemGroup>
     <ClCompile Include="gputil.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitattributes" />
+    <None Include=".gitignore" />
+    <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="misc\header.png" />
+    <Image Include="misc\social_preview.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
