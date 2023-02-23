@@ -1,9 +1,11 @@
 #include <iostream>
 
+#include <gputil.h>
+
 #include <cuda.h>
 #include <nvrtc.h>
 
-#define NUM_THREADS 128
+#define NUM_THREADS 10
 #define NUM_BLOCKS 32
 
 #define CUDA_ASSERT(cond)                                                                        \
@@ -113,7 +115,7 @@ int main()
 
 	CUDA_ASSERT(cuCtxSynchronize());
 
-	// Retrieve and print output.+
+	// Retrieve and print output
 	CUDA_ASSERT(cuMemcpyDtoH(hOut, dOut, bufferSize));
 
 	for (size_t i = 0; i < n; ++i) {

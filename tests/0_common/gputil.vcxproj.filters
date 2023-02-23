@@ -20,16 +20,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="README.md" />
-    <None Include=".gitignore" />
-    <None Include=".gitattributes" />
-  </ItemGroup>
-  <ItemGroup>
     <Image Include="misc\header.png">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="misc\social_preview.png">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\gputil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
