@@ -10,7 +10,10 @@
 <ins>**1. Downloading CUDA**</ins>   
 Download the [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit) and follow the setup instructions for your system. The project runs on CUDA toolkit version 12.0
 
-<ins>**Linking**</ins>
+<ins>**2. Linking against the necessary libraries**</ins>    
 After you've downloaded the CUDA toolkit you'll have to link agains some cuda libraries - specifically `cuda.lib` and `nvrtc.lib` - go into **Properties > Linker > Input > Additional Dependencies** and add the two .lib files. After linking against the two libraries go into **Properties > Linker > General > Additional Library Directories** and include the include directory of our CUDA libraries (default is `$(CUDA_PATH)\lib\x64`). Finally, go into **Properties > C/C++ > General > Additional Include Directories** and include CUDA headers (default is `$(CUDA_PATH)\include`).
+
+<ins>**3. Including gputil in your project**</ins>   
+# Finally, copy the contents of the source folder 
 
 *Note that gputil is not, in any way, shape, or form, associated with Nvidia.*
