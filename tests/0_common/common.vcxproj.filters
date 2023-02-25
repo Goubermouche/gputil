@@ -34,5 +34,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="kernel.cu" />
+    <None Include="child_kernel.cu" />
   </ItemGroup>
 </Project>

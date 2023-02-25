@@ -119,6 +119,7 @@ int main()
 
 	//return 0;
 
+
 	CUDA_ASSERT(cuInit(0));
 
 	const gputil::device dev = gputil::device::create([](const gputil::device& device) {
