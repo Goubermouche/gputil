@@ -38,7 +38,7 @@ namespace gputil {
 		/**
 		* \brief CUDA device properties.
 		*/
-		enum class cuda_device_properties {
+		enum class device_property {
 			max_threads_per_block = 1,
 			max_block_dim_x = 2,
 			max_block_dim_y = 3,
@@ -175,6 +175,14 @@ namespace gputil {
 			unified_function_pointers = 129
 		};
 
+		enum class context_flag {
+			automatic_scheduling = 0x00,
+			spin_scheduling = 0x01,
+			yield_scheduling = 0x02,
+			blocking_scheduling = 0x04,
+			keep_local_memory_allocations_after_launch = 0x10
+		}; 
+		
 		/**
 		* \brief Supported memory types.
 		*/

@@ -125,7 +125,11 @@ int main()
 		return device.theoretical_memory_bandwidth;
 	});
 
+	const gputil::context ctx = gputil::context::create(dev);
+
 	std::cout << "Theoretical memory bandwidth: " << gputil::format_bytes(dev.theoretical_memory_bandwidth) << '\n';
 	std::cout << "Core count: " << dev.core_count << '\n';
 	std::cout << "Name: " << dev.name << '\n';
+
+	ctx.destroy();
 }

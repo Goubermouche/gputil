@@ -8,9 +8,9 @@ namespace gputil{
 	 */
 	struct device {
 	public:
-		static device create(const std::function<u64(const device& device)>& selector);
-
 		device() = default;
+
+		static device create(const std::function<u64(const device& device)>& selector);
 
 		/**
 		 * \brief Acquires the requested device property for the device.
@@ -19,10 +19,14 @@ namespace gputil{
 		 * \returns Value that maps to the requested value
 		 */
 		template<class T>
-		inline T get_device_property(const cuda_device_properties property) const {
+		inline T get_device_property(const device_property property) const {
 			i32 result;
 			CUDA_ASSERT(cuDeviceGetAttribute(&result, static_cast<CUdevice_attribute>(property), m_device));
 			return static_cast<T>(result);
+		}
+
+		inline constexpr CUdevice get() const {
+			return  m_device;
 		}
 
 	private:
@@ -36,19 +40,19 @@ namespace gputil{
 			name = std::string(device_name);
 
 			compute_capability = {
-				.major = get_device_property<u16>(cuda_device_properties::compute_capability_major),
-				.minor = get_device_property<u16>(cuda_device_properties::compute_capability_minor)
+				.major = get_device_property<u16>(device_property::compute_capability_major),
+				.minor = get_device_property<u16>(device_property::compute_capability_minor)
 			};
 
-			constant_memory              = get_device_property<u32>(cuda_device_properties::total_constant_memory);
-			shared_memory_per_block      = get_device_property<u32>(cuda_device_properties::max_shared_memory_per_block);
-			max_threads_per_block        = get_device_property<u32>(cuda_device_properties::max_threads_per_block);
-			clock_rate                   = get_device_property<u32>(cuda_device_properties::clock_rate);
-			unified_addressing           = get_device_property<bool>(cuda_device_properties::unified_addressing);
-			memory_bus_width             = get_device_property<u32>(cuda_device_properties::global_memory_bus_width);
-			managed_memory               = get_device_property<bool>(cuda_device_properties::managed_memory);
-			multiprocessor_count         = get_device_property<u32>(cuda_device_properties::multiprocessor_count);
-			memory_clock_rate            = get_device_property<u32>(cuda_device_properties::memory_clock_rate);
+			constant_memory              = get_device_property<u32>(device_property::total_constant_memory);
+			shared_memory_per_block      = get_device_property<u32>(device_property::max_shared_memory_per_block);
+			max_threads_per_block        = get_device_property<u32>(device_property::max_threads_per_block);
+			clock_rate                   = get_device_property<u32>(device_property::clock_rate);
+			unified_addressing           = get_device_property<bool>(device_property::unified_addressing);
+			memory_bus_width             = get_device_property<u32>(device_property::global_memory_bus_width);
+			managed_memory               = get_device_property<bool>(device_property::managed_memory);
+			multiprocessor_count         = get_device_property<u32>(device_property::multiprocessor_count);
+			memory_clock_rate            = get_device_property<u32>(device_property::memory_clock_rate);
 			theoretical_memory_bandwidth = static_cast<u64>(memory_clock_rate * 1e3 * (memory_bus_width / 8) * 2);
 			core_count                   = calculate_cuda_core_count(multiprocessor_count, compute_capability);
 		}
