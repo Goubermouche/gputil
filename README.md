@@ -4,7 +4,7 @@
    </a>
 </p>
 
-**gputil** is a simple utility library for [C++ 20](https://cplusplus.com/) and [CUDA](https://developer.nvidia.com/cuda-toolkit) interoperation, it provides basic containers you know and love from the standart library and a few of its own. Note that while I have tried to prioritize performance and all-around correctess, there may be, and probably are, certain performance problems/slight unoptimizations. If you find one of these please feel free to create an issue and I'll try to fix it as soon as possible. 
+**gputil** is a simple utility library for [C++ 20](https://cplusplus.com/) and [CUDA](https://developer.nvidia.com/cuda-toolkit) interoperation, it provides basic containers you know and love from the standard library and a few of its own. Note that while I have tried to prioritize performance and all-around correctess, there may be, and probably are, certain performance problems/slight unoptimizations. If you find one of these please feel free to create an issue and I'll try to fix it as soon as possible. 
 
 ## Getting up and running
 <ins>**1. Downloading CUDA**</ins>   
