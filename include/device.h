@@ -28,7 +28,6 @@ namespace gputil{
 		inline constexpr CUdevice get() const {
 			return  m_device;
 		}
-
 	private:
 		/**
 		 * \brief Constructs the device using the supplied CUdevice.
@@ -103,6 +102,7 @@ namespace gputil{
 	 */
 	device inline device::create(const std::function<u64(const device& device)>& selector) {
 		const std::vector<device> devices = get_available_devices();
+		ASSERT(!devices.empty(), "No CUDA-capable device was found!");
 
 		const auto device_comparator = [&](const device& left, const device& right) {
 			return selector(left) < selector(right);

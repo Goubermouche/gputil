@@ -4,9 +4,11 @@
 #include <functional>
 #include <algorithm>
 #include <format>
+#include <fstream>
+#include <regex>
 
 #include <cuda.h>
-// #include <nvrtc.h>
+#include <nvrtc.h>
 
 namespace gputil {
 	namespace types {
@@ -26,6 +28,8 @@ namespace gputil {
 		using f32  = float;
 		using f64  = double;
 		using f128 = long double;
+
+		using nvrtc_result = nvrtcResult;
 
 		/**
 		* \brief CUDA device compute capability

@@ -94,4 +94,24 @@ namespace gputil {
 
 		return core_count;
 	}
+
+	/**
+	* \brief Looks for all instances of text that matches the given \a regex and extracts it.
+	* \param text Text to search
+	* \param regex Regex to use for searching
+	* \returns Vector of strings that match the given \a regex
+	*/
+	inline std::vector<std::string> extract_regex_from_string(const std::string& text, const std::regex& regex) {
+		std::vector<std::string> result;
+
+		std::smatch match;
+		std::string::const_iterator search_start(text.cbegin());
+
+		while (std::regex_search(search_start, text.cend(), match, regex)) {
+			result.emplace_back(match[1]);
+			search_start = match.suffix().first;
+		}
+
+		return result;
+	}
 }
