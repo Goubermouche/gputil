@@ -146,6 +146,7 @@
     <ClInclude Include="include\gputil.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="child_child_kernel.cu" />
     <None Include="child_kernel.cu" />
     <None Include="kernel.cu" />
   </ItemGroup>

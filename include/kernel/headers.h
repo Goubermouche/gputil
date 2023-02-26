@@ -6,9 +6,34 @@ namespace gputil {
 	// These headers files were take from jitify: https://github.com/NVIDIA/jitify/
 	// They are stripped down headers that are compatible with NVRTC
 
+    static const char* jitsafe_header_preinclude_h = R"(
+//// WAR for Thrust (which appears to have forgotten to include this in result_of_adaptable_function.h
+//#include <type_traits>
+//// WAR for Thrust (which appear to have forgotten to include this in error_code.h)
+//#include <string>
+// WAR for generics/shfl.h
+#define THRUST_STATIC_ASSERT(x)
+// WAR for CUB
+#ifdef __host__
+#undef __host__
+#endif
+#define __host__
+// WAR to allow exceptions to be parsed
+#define try
+#define catch(...)
+)"
+#if defined(_WIN32) || defined(_WIN64)
+// WAR for NVRTC <= 11.0 not defining _WIN64.
+R"(
+#ifndef _WIN64
+#define _WIN64 1
+#endif
+)"
+#endif
+;
+
     static const char* jitsafe_header_float_h = R"(
-#ifndef __CFLOAT_HEADER
-#define __CFLOAT_HEADER
+#pragma once
 #define FLT_RADIX       2
 #define FLT_MANT_DIG    24
 #define DBL_MANT_DIG    53
@@ -33,12 +58,10 @@ namespace gputil {
 #define FLT_EVAL_METHOD 0
 #define DECIMAL_DIG     21
 #endif
-#endif
 )";
 
     static const char* jitsafe_header_limits_h = R"(
-#ifndef __LIMITS_HEADER
-#define __LIMITS_HEADER
+#pragma once
 #if defined _WIN32 || defined _WIN64
  #define __WORDSIZE 32
 #else
@@ -78,12 +101,10 @@ enum {
 #define LLONG_MAX  0x7fffffffffffffff
 #define LLONG_MIN  (-LLONG_MAX - 1)
 #define ULLONG_MAX 0xffffffffffffffff
-#endif
 )";
 
     static const char* jitsafe_header_iterator = R"(
-#ifndef __ITERATOR_HEADER
-#define __ITERATOR_HEADER
+#pragma once
 namespace std {
 struct output_iterator_tag {};
 struct input_iterator_tag {};
@@ -115,15 +136,13 @@ struct iterator_traits<T const*> {
   typedef T const&                   reference;
 };
 }  // namespace std
-#endif
 )";
 
     // TODO: This is incomplete; need floating point limits
     //   Joe Eaton: added IEEE float and double types, none of the smaller types
     //              using type specific structs since we can't template on floats.
     static const char* jitsafe_header_limits = R"(
-#ifndef __LIMITS_HEADER
-#define __LIMITS_HEADER
+#pragma once
 #include <cfloat>
 #include <climits>
 #include <cstdint>
@@ -291,272 +310,268 @@ template<> struct numeric_limits<double>             : public
 __jitify_detail::DoubleLimits 
 {};
 }  // namespace std
-#endif
 )";
 
     // TODO: This is highly incomplete
     static const char* jitsafe_header_type_traits = R"(
-#ifndef __TYPE_TRAITS_HEADER
-#define __TYPE_TRAITS_HEADER
-#if __cplusplus >= 201103L
-namespace std {
-template<bool B, class T = void> struct enable_if {};
-template<class T>                struct enable_if<true, T> { typedef T type; };
-#if __cplusplus >= 201402L
-template< bool B, class T = void > using enable_if_t = typename enable_if<B,T>::type;
-#endif
-struct true_type  {
-  enum { value = true };
-  operator bool() const { return true; }
-};
-struct false_type {
-  enum { value = false };
-  operator bool() const { return false; }
-};
-template<typename T> struct is_floating_point    : false_type {};
-template<> struct is_floating_point<float>       :  true_type {};
-template<> struct is_floating_point<double>      :  true_type {};
-template<> struct is_floating_point<long double> :  true_type {};
-#if __cplusplus >= 201703L
-template<typename T> inline constexpr bool is_floating_point_v = is_floating_point<T>::value;
-#endif  // __cplusplus >= 201703L
-template<class T> struct is_integral              : false_type {};
-template<> struct is_integral<bool>               :  true_type {};
-template<> struct is_integral<char>               :  true_type {};
-template<> struct is_integral<signed char>        :  true_type {};
-template<> struct is_integral<unsigned char>      :  true_type {};
-template<> struct is_integral<short>              :  true_type {};
-template<> struct is_integral<unsigned short>     :  true_type {};
-template<> struct is_integral<int>                :  true_type {};
-template<> struct is_integral<unsigned int>       :  true_type {};
-template<> struct is_integral<long>               :  true_type {};
-template<> struct is_integral<unsigned long>      :  true_type {};
-template<> struct is_integral<long long>          :  true_type {};
-template<> struct is_integral<unsigned long long> :  true_type {};
-#if __cplusplus >= 201703L
-template<typename T> inline constexpr bool is_integral_v = is_integral<T>::value;
-#endif  // __cplusplus >= 201703L
-template<typename T> struct is_signed    : false_type {};
-template<> struct is_signed<float>       :  true_type {};
-template<> struct is_signed<double>      :  true_type {};
-template<> struct is_signed<long double> :  true_type {};
-template<> struct is_signed<signed char> :  true_type {};
-template<> struct is_signed<short>       :  true_type {};
-template<> struct is_signed<int>         :  true_type {};
-template<> struct is_signed<long>        :  true_type {};
-template<> struct is_signed<long long>   :  true_type {};
-template<typename T> struct is_unsigned             : false_type {};
-template<> struct is_unsigned<unsigned char>      :  true_type {};
-template<> struct is_unsigned<unsigned short>     :  true_type {};
-template<> struct is_unsigned<unsigned int>       :  true_type {};
-template<> struct is_unsigned<unsigned long>      :  true_type {};
-template<> struct is_unsigned<unsigned long long> :  true_type {};
-template<typename T, typename U> struct is_same      : false_type {};
-template<typename T>             struct is_same<T,T> :  true_type {};
-#if __cplusplus >= 201703L
-template<typename T, typename U> inline constexpr bool is_same_v = is_same<T, U>::value;
-#endif  // __cplusplus >= 201703L
-template<class T> struct is_array : false_type {};
-template<class T> struct is_array<T[]> : true_type {};
-template<class T, size_t N> struct is_array<T[N]> : true_type {};
-//partial implementation only of is_function
-template<class> struct is_function : false_type { };
-template<class Ret, class... Args> struct is_function<Ret(Args...)> : true_type {}; //regular
-template<class Ret, class... Args> struct is_function<Ret(Args......)> : true_type {}; // variadic
-template<class> struct result_of;
-template<class F, typename... Args>
-struct result_of<F(Args...)> {
-// TODO: This is a hack; a proper implem is quite complicated.
-typedef typename F::result_type type;
-};
-template<class T> struct is_pointer                    : false_type {};
-template<class T> struct is_pointer<T*>                : true_type {};
-template<class T> struct is_pointer<T* const>          : true_type {};
-template<class T> struct is_pointer<T* volatile>       : true_type {};
-template<class T> struct is_pointer<T* const volatile> : true_type {};
-#if __cplusplus >= 201703L
-template< class T > inline constexpr bool is_pointer_v = is_pointer<T>::value;
-#endif  // __cplusplus >= 201703L
-template <class T> struct remove_pointer { typedef T type; };
-template <class T> struct remove_pointer<T*> { typedef T type; };
-template <class T> struct remove_pointer<T* const> { typedef T type; };
-template <class T> struct remove_pointer<T* volatile> { typedef T type; };
-template <class T> struct remove_pointer<T* const volatile> { typedef T type; };
-template <class T> struct remove_reference { typedef T type; };
-template <class T> struct remove_reference<T&> { typedef T type; };
-template <class T> struct remove_reference<T&&> { typedef T type; };
-#if __cplusplus >= 201402L
-template< class T > using remove_reference_t = typename remove_reference<T>::type;
-#endif
-template<class T> struct remove_extent { typedef T type; };
-template<class T> struct remove_extent<T[]> { typedef T type; };
-template<class T, size_t N> struct remove_extent<T[N]> { typedef T type; };
-#if __cplusplus >= 201402L
-template< class T > using remove_extent_t = typename remove_extent<T>::type;
-#endif
-template< class T > struct remove_const          { typedef T type; };
-template< class T > struct remove_const<const T> { typedef T type; };
-template< class T > struct remove_volatile             { typedef T type; };
-template< class T > struct remove_volatile<volatile T> { typedef T type; };
-template< class T > struct remove_cv { typedef typename remove_volatile<typename remove_const<T>::type>::type type; };
-#if __cplusplus >= 201402L
-template< class T > using remove_cv_t       = typename remove_cv<T>::type;
-template< class T > using remove_const_t    = typename remove_const<T>::type;
-template< class T > using remove_volatile_t = typename remove_volatile<T>::type;
-#endif
-template<bool B, class T, class F> struct conditional { typedef T type; };
-template<class T, class F> struct conditional<false, T, F> { typedef F type; };
-#if __cplusplus >= 201402L
-template< bool B, class T, class F > using conditional_t = typename conditional<B,T,F>::type;
-#endif
-namespace __jitify_detail {
-template< class T, bool is_function_type = false > struct add_pointer { using type = typename remove_reference<T>::type*; };
-template< class T > struct add_pointer<T, true> { using type = T; };
-template< class T, class... Args > struct add_pointer<T(Args...), true> { using type = T(*)(Args...); };
-template< class T, class... Args > struct add_pointer<T(Args..., ...), true> { using type = T(*)(Args..., ...); };
-}  // namespace __jitify_detail
-template< class T > struct add_pointer : __jitify_detail::add_pointer<T, is_function<T>::value> {};
-#if __cplusplus >= 201402L
-template< class T > using add_pointer_t = typename add_pointer<T>::type;
-#endif
-template< class T > struct decay {
-private:
-  typedef typename remove_reference<T>::type U;
-public:
-  typedef typename conditional<is_array<U>::value, typename remove_extent<U>::type*,
-    typename conditional<is_function<U>::value,typename add_pointer<U>::type,typename remove_cv<U>::type
-    >::type>::type type;
-};
-#if __cplusplus >= 201402L
-template< class T > using decay_t = typename decay<T>::type;
-#endif
-template<class T, T v>
-struct integral_constant {
-static constexpr T value = v;
-typedef T value_type;
-typedef integral_constant type; // using injected-class-name
-constexpr operator value_type() const noexcept { return value; }
-#if __cplusplus >= 201402L
-constexpr value_type operator()() const noexcept { return value; }
-#endif
-};
-template<typename T> struct is_arithmetic :
-std::integral_constant<bool, std::is_integral<T>::value ||
-                             std::is_floating_point<T>::value> {};
-#if __cplusplus >= 201703L
-template<typename T> inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
-#endif  // __cplusplus >= 201703L
-template<class T> struct is_lvalue_reference : false_type {};
-template<class T> struct is_lvalue_reference<T&> : true_type {};
-template<class T> struct is_rvalue_reference : false_type {};
-template<class T> struct is_rvalue_reference<T&&> : true_type {};
-namespace __jitify_detail {
-template <class T> struct type_identity { using type = T; };
-template <class T> auto add_lvalue_reference(int) -> type_identity<T&>;
-template <class T> auto add_lvalue_reference(...) -> type_identity<T>;
-template <class T> auto add_rvalue_reference(int) -> type_identity<T&&>;
-template <class T> auto add_rvalue_reference(...) -> type_identity<T>;
-} // namespace _jitify_detail
-template <class T> struct add_lvalue_reference : decltype(__jitify_detail::add_lvalue_reference<T>(0)) {};
-template <class T> struct add_rvalue_reference : decltype(__jitify_detail::add_rvalue_reference<T>(0)) {};
-#if __cplusplus >= 201402L
-template <class T> using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
-template <class T> using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
-#endif
-template<typename T> struct is_const          : public false_type {};
-template<typename T> struct is_const<const T> : public true_type {};
-template<typename T> struct is_volatile             : public false_type {};
-template<typename T> struct is_volatile<volatile T> : public true_type {};
-template<typename T> struct is_void             : public false_type {};
-template<>           struct is_void<void>       : public true_type {};
-template<>           struct is_void<const void> : public true_type {};
-template<typename T> struct is_reference     : public false_type {};
-template<typename T> struct is_reference<T&> : public true_type {};
-template<typename _Tp, bool = (is_void<_Tp>::value || is_reference<_Tp>::value)>
-struct __add_reference_helper { typedef _Tp&    type; };
-template<typename _Tp> struct __add_reference_helper<_Tp, true> { typedef _Tp     type; };
-template<typename _Tp> struct add_reference : public __add_reference_helper<_Tp>{};
-namespace __jitify_detail {
-template<typename T> struct is_int_or_cref {
-typedef typename remove_reference<T>::type type_sans_ref;
-static const bool value = (is_integral<T>::value || (is_integral<type_sans_ref>::value
-  && is_const<type_sans_ref>::value && !is_volatile<type_sans_ref>::value));
-}; // end is_int_or_cref
-template<typename From, typename To> struct is_convertible_sfinae {
-private:
-typedef char                          yes;
-typedef struct { char two_chars[2]; } no;
-static inline yes   test(To) { return yes(); }
-static inline no    test(...) { return no(); }
-static inline typename remove_reference<From>::type& from() { typename remove_reference<From>::type* ptr = 0; return *ptr; }
-public:
-static const bool value = sizeof(test(from())) == sizeof(yes);
-}; // end is_convertible_sfinae
-template<typename From, typename To> struct is_convertible_needs_simple_test {
-static const bool from_is_void      = is_void<From>::value;
-static const bool to_is_void        = is_void<To>::value;
-static const bool from_is_float     = is_floating_point<typename remove_reference<From>::type>::value;
-static const bool to_is_int_or_cref = is_int_or_cref<To>::value;
-static const bool value = (from_is_void || to_is_void || (from_is_float && to_is_int_or_cref));
-}; // end is_convertible_needs_simple_test
-template<typename From, typename To, bool = is_convertible_needs_simple_test<From,To>::value>
-struct is_convertible {
-static const bool value = (is_void<To>::value || (is_int_or_cref<To>::value && !is_void<From>::value));
-}; // end is_convertible
-template<typename From, typename To> struct is_convertible<From, To, false> {
-static const bool value = (is_convertible_sfinae<typename add_reference<From>::type, To>::value);
-}; // end is_convertible
-} // end __jitify_detail
-// implementation of is_convertible taken from thrust's pre C++11 path
-template<typename From, typename To> struct is_convertible
-: public integral_constant<bool, __jitify_detail::is_convertible<From, To>::value>
-{ }; // end is_convertible
-template<class A, class B> struct is_base_of { };
-template<size_t len, size_t alignment> struct aligned_storage { struct type { alignas(alignment) char data[len]; }; };
-template <class T> struct alignment_of : std::integral_constant<size_t,alignof(T)> {};
-template <typename T> struct make_unsigned;
-template <> struct make_unsigned<signed char>        { typedef unsigned char type; };
-template <> struct make_unsigned<signed short>       { typedef unsigned short type; };
-template <> struct make_unsigned<signed int>         { typedef unsigned int type; };
-template <> struct make_unsigned<signed long>        { typedef unsigned long type; };
-template <> struct make_unsigned<signed long long>   { typedef unsigned long long type; };
-template <> struct make_unsigned<unsigned char>      { typedef unsigned char type; };
-template <> struct make_unsigned<unsigned short>     { typedef unsigned short type; };
-template <> struct make_unsigned<unsigned int>       { typedef unsigned int type; };
-template <> struct make_unsigned<unsigned long>      { typedef unsigned long type; };
-template <> struct make_unsigned<unsigned long long> { typedef unsigned long long type; };
-template <> struct make_unsigned<char>               { typedef unsigned char type; };
-#if defined _WIN32 || defined _WIN64
-template <> struct make_unsigned<wchar_t>            { typedef unsigned short type; };
-#else
-template <> struct make_unsigned<wchar_t>            { typedef unsigned int type; };
-#endif
-template <typename T> struct make_signed;
-template <> struct make_signed<signed char>        { typedef signed char type; };
-template <> struct make_signed<signed short>       { typedef signed short type; };
-template <> struct make_signed<signed int>         { typedef signed int type; };
-template <> struct make_signed<signed long>        { typedef signed long type; };
-template <> struct make_signed<signed long long>   { typedef signed long long type; };
-template <> struct make_signed<unsigned char>      { typedef signed char type; };
-template <> struct make_signed<unsigned short>     { typedef signed short type; };
-template <> struct make_signed<unsigned int>       { typedef signed int type; };
-template <> struct make_signed<unsigned long>      { typedef signed long type; };
-template <> struct make_signed<unsigned long long> { typedef signed long long type; };
-template <> struct make_signed<char>               { typedef signed char type; };
-#if defined _WIN32 || defined _WIN64
-template <> struct make_signed<wchar_t>            { typedef signed short type; };
-#else
-template <> struct make_signed<wchar_t>            { typedef signed int type; };
-#endif
-}  // namespace std
-#endif // c++11
-#endif
+    #pragma once
+    #if __cplusplus >= 201103L
+    namespace std {
+    template<bool B, class T = void> struct enable_if {};
+    template<class T>                struct enable_if<true, T> { typedef T type; };
+    #if __cplusplus >= 201402L
+    template< bool B, class T = void > using enable_if_t = typename enable_if<B,T>::type;
+    #endif
+    struct true_type  {
+      enum { value = true };
+      operator bool() const { return true; }
+    };
+    struct false_type {
+      enum { value = false };
+      operator bool() const { return false; }
+    };
+    template<typename T> struct is_floating_point    : false_type {};
+    template<> struct is_floating_point<float>       :  true_type {};
+    template<> struct is_floating_point<double>      :  true_type {};
+    template<> struct is_floating_point<long double> :  true_type {};
+    #if __cplusplus >= 201703L
+    template<typename T> inline constexpr bool is_floating_point_v = is_floating_point<T>::value;
+    #endif  // __cplusplus >= 201703L
+    template<class T> struct is_integral              : false_type {};
+    template<> struct is_integral<bool>               :  true_type {};
+    template<> struct is_integral<char>               :  true_type {};
+    template<> struct is_integral<signed char>        :  true_type {};
+    template<> struct is_integral<unsigned char>      :  true_type {};
+    template<> struct is_integral<short>              :  true_type {};
+    template<> struct is_integral<unsigned short>     :  true_type {};
+    template<> struct is_integral<int>                :  true_type {};
+    template<> struct is_integral<unsigned int>       :  true_type {};
+    template<> struct is_integral<long>               :  true_type {};
+    template<> struct is_integral<unsigned long>      :  true_type {};
+    template<> struct is_integral<long long>          :  true_type {};
+    template<> struct is_integral<unsigned long long> :  true_type {};
+    #if __cplusplus >= 201703L
+    template<typename T> inline constexpr bool is_integral_v = is_integral<T>::value;
+    #endif  // __cplusplus >= 201703L
+    template<typename T> struct is_signed    : false_type {};
+    template<> struct is_signed<float>       :  true_type {};
+    template<> struct is_signed<double>      :  true_type {};
+    template<> struct is_signed<long double> :  true_type {};
+    template<> struct is_signed<signed char> :  true_type {};
+    template<> struct is_signed<short>       :  true_type {};
+    template<> struct is_signed<int>         :  true_type {};
+    template<> struct is_signed<long>        :  true_type {};
+    template<> struct is_signed<long long>   :  true_type {};
+    template<typename T> struct is_unsigned             : false_type {};
+    template<> struct is_unsigned<unsigned char>      :  true_type {};
+    template<> struct is_unsigned<unsigned short>     :  true_type {};
+    template<> struct is_unsigned<unsigned int>       :  true_type {};
+    template<> struct is_unsigned<unsigned long>      :  true_type {};
+    template<> struct is_unsigned<unsigned long long> :  true_type {};
+    template<typename T, typename U> struct is_same      : false_type {};
+    template<typename T>             struct is_same<T,T> :  true_type {};
+    #if __cplusplus >= 201703L
+    template<typename T, typename U> inline constexpr bool is_same_v = is_same<T, U>::value;
+    #endif  // __cplusplus >= 201703L
+    template<class T> struct is_array : false_type {};
+    template<class T> struct is_array<T[]> : true_type {};
+    template<class T, size_t N> struct is_array<T[N]> : true_type {};
+    //partial implementation only of is_function
+    template<class> struct is_function : false_type { };
+    template<class Ret, class... Args> struct is_function<Ret(Args...)> : true_type {}; //regular
+    template<class Ret, class... Args> struct is_function<Ret(Args......)> : true_type {}; // variadic
+    template<class> struct result_of;
+    template<class F, typename... Args>
+    struct result_of<F(Args...)> {
+    // TODO: This is a hack; a proper implem is quite complicated.
+    typedef typename F::result_type type;
+    };
+    template<class T> struct is_pointer                    : false_type {};
+    template<class T> struct is_pointer<T*>                : true_type {};
+    template<class T> struct is_pointer<T* const>          : true_type {};
+    template<class T> struct is_pointer<T* volatile>       : true_type {};
+    template<class T> struct is_pointer<T* const volatile> : true_type {};
+    #if __cplusplus >= 201703L
+    template< class T > inline constexpr bool is_pointer_v = is_pointer<T>::value;
+    #endif  // __cplusplus >= 201703L
+    template <class T> struct remove_pointer { typedef T type; };
+    template <class T> struct remove_pointer<T*> { typedef T type; };
+    template <class T> struct remove_pointer<T* const> { typedef T type; };
+    template <class T> struct remove_pointer<T* volatile> { typedef T type; };
+    template <class T> struct remove_pointer<T* const volatile> { typedef T type; };
+    template <class T> struct remove_reference { typedef T type; };
+    template <class T> struct remove_reference<T&> { typedef T type; };
+    template <class T> struct remove_reference<T&&> { typedef T type; };
+    #if __cplusplus >= 201402L
+    template< class T > using remove_reference_t = typename remove_reference<T>::type;
+    #endif
+    template<class T> struct remove_extent { typedef T type; };
+    template<class T> struct remove_extent<T[]> { typedef T type; };
+    template<class T, size_t N> struct remove_extent<T[N]> { typedef T type; };
+    #if __cplusplus >= 201402L
+    template< class T > using remove_extent_t = typename remove_extent<T>::type;
+    #endif
+    template< class T > struct remove_const          { typedef T type; };
+    template< class T > struct remove_const<const T> { typedef T type; };
+    template< class T > struct remove_volatile             { typedef T type; };
+    template< class T > struct remove_volatile<volatile T> { typedef T type; };
+    template< class T > struct remove_cv { typedef typename remove_volatile<typename remove_const<T>::type>::type type; };
+    #if __cplusplus >= 201402L
+    template< class T > using remove_cv_t       = typename remove_cv<T>::type;
+    template< class T > using remove_const_t    = typename remove_const<T>::type;
+    template< class T > using remove_volatile_t = typename remove_volatile<T>::type;
+    #endif
+    template<bool B, class T, class F> struct conditional { typedef T type; };
+    template<class T, class F> struct conditional<false, T, F> { typedef F type; };
+    #if __cplusplus >= 201402L
+    template< bool B, class T, class F > using conditional_t = typename conditional<B,T,F>::type;
+    #endif
+    namespace __jitify_detail {
+    template< class T, bool is_function_type = false > struct add_pointer { using type = typename remove_reference<T>::type*; };
+    template< class T > struct add_pointer<T, true> { using type = T; };
+    template< class T, class... Args > struct add_pointer<T(Args...), true> { using type = T(*)(Args...); };
+    template< class T, class... Args > struct add_pointer<T(Args..., ...), true> { using type = T(*)(Args..., ...); };
+    }  // namespace __jitify_detail
+    template< class T > struct add_pointer : __jitify_detail::add_pointer<T, is_function<T>::value> {};
+    #if __cplusplus >= 201402L
+    template< class T > using add_pointer_t = typename add_pointer<T>::type;
+    #endif
+    template< class T > struct decay {
+    private:
+      typedef typename remove_reference<T>::type U;
+    public:
+      typedef typename conditional<is_array<U>::value, typename remove_extent<U>::type*,
+        typename conditional<is_function<U>::value,typename add_pointer<U>::type,typename remove_cv<U>::type
+        >::type>::type type;
+    };
+    #if __cplusplus >= 201402L
+    template< class T > using decay_t = typename decay<T>::type;
+    #endif
+    template<class T, T v>
+    struct integral_constant {
+    static constexpr T value = v;
+    typedef T value_type;
+    typedef integral_constant type; // using injected-class-name
+    constexpr operator value_type() const noexcept { return value; }
+    #if __cplusplus >= 201402L
+    constexpr value_type operator()() const noexcept { return value; }
+    #endif
+    };
+    template<typename T> struct is_arithmetic :
+    std::integral_constant<bool, std::is_integral<T>::value ||
+                                 std::is_floating_point<T>::value> {};
+    #if __cplusplus >= 201703L
+    template<typename T> inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
+    #endif  // __cplusplus >= 201703L
+    template<class T> struct is_lvalue_reference : false_type {};
+    template<class T> struct is_lvalue_reference<T&> : true_type {};
+    template<class T> struct is_rvalue_reference : false_type {};
+    template<class T> struct is_rvalue_reference<T&&> : true_type {};
+    namespace __jitify_detail {
+    template <class T> struct type_identity { using type = T; };
+    template <class T> auto add_lvalue_reference(int) -> type_identity<T&>;
+    template <class T> auto add_lvalue_reference(...) -> type_identity<T>;
+    template <class T> auto add_rvalue_reference(int) -> type_identity<T&&>;
+    template <class T> auto add_rvalue_reference(...) -> type_identity<T>;
+    } // namespace _jitify_detail
+    template <class T> struct add_lvalue_reference : decltype(__jitify_detail::add_lvalue_reference<T>(0)) {};
+    template <class T> struct add_rvalue_reference : decltype(__jitify_detail::add_rvalue_reference<T>(0)) {};
+    #if __cplusplus >= 201402L
+    template <class T> using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
+    template <class T> using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
+    #endif
+    template<typename T> struct is_const          : public false_type {};
+    template<typename T> struct is_const<const T> : public true_type {};
+    template<typename T> struct is_volatile             : public false_type {};
+    template<typename T> struct is_volatile<volatile T> : public true_type {};
+    template<typename T> struct is_void             : public false_type {};
+    template<>           struct is_void<void>       : public true_type {};
+    template<>           struct is_void<const void> : public true_type {};
+    template<typename T> struct is_reference     : public false_type {};
+    template<typename T> struct is_reference<T&> : public true_type {};
+    template<typename _Tp, bool = (is_void<_Tp>::value || is_reference<_Tp>::value)>
+    struct __add_reference_helper { typedef _Tp&    type; };
+    template<typename _Tp> struct __add_reference_helper<_Tp, true> { typedef _Tp     type; };
+    template<typename _Tp> struct add_reference : public __add_reference_helper<_Tp>{};
+    namespace __jitify_detail {
+    template<typename T> struct is_int_or_cref {
+    typedef typename remove_reference<T>::type type_sans_ref;
+    static const bool value = (is_integral<T>::value || (is_integral<type_sans_ref>::value
+      && is_const<type_sans_ref>::value && !is_volatile<type_sans_ref>::value));
+    }; // end is_int_or_cref
+    template<typename From, typename To> struct is_convertible_sfinae {
+    private:
+    typedef char                          yes;
+    typedef struct { char two_chars[2]; } no;
+    static inline yes   test(To) { return yes(); }
+    static inline no    test(...) { return no(); }
+    static inline typename remove_reference<From>::type& from() { typename remove_reference<From>::type* ptr = 0; return *ptr; }
+    public:
+    static const bool value = sizeof(test(from())) == sizeof(yes);
+    }; // end is_convertible_sfinae
+    template<typename From, typename To> struct is_convertible_needs_simple_test {
+    static const bool from_is_void      = is_void<From>::value;
+    static const bool to_is_void        = is_void<To>::value;
+    static const bool from_is_float     = is_floating_point<typename remove_reference<From>::type>::value;
+    static const bool to_is_int_or_cref = is_int_or_cref<To>::value;
+    static const bool value = (from_is_void || to_is_void || (from_is_float && to_is_int_or_cref));
+    }; // end is_convertible_needs_simple_test
+    template<typename From, typename To, bool = is_convertible_needs_simple_test<From,To>::value>
+    struct is_convertible {
+    static const bool value = (is_void<To>::value || (is_int_or_cref<To>::value && !is_void<From>::value));
+    }; // end is_convertible
+    template<typename From, typename To> struct is_convertible<From, To, false> {
+    static const bool value = (is_convertible_sfinae<typename add_reference<From>::type, To>::value);
+    }; // end is_convertible
+    } // end __jitify_detail
+    // implementation of is_convertible taken from thrust's pre C++11 path
+    template<typename From, typename To> struct is_convertible
+    : public integral_constant<bool, __jitify_detail::is_convertible<From, To>::value>
+    { }; // end is_convertible
+    template<class A, class B> struct is_base_of { };
+    template<size_t len, size_t alignment> struct aligned_storage { struct type { alignas(alignment) char data[len]; }; };
+    template <class T> struct alignment_of : std::integral_constant<size_t,alignof(T)> {};
+    template <typename T> struct make_unsigned;
+    template <> struct make_unsigned<signed char>        { typedef unsigned char type; };
+    template <> struct make_unsigned<signed short>       { typedef unsigned short type; };
+    template <> struct make_unsigned<signed int>         { typedef unsigned int type; };
+    template <> struct make_unsigned<signed long>        { typedef unsigned long type; };
+    template <> struct make_unsigned<signed long long>   { typedef unsigned long long type; };
+    template <> struct make_unsigned<unsigned char>      { typedef unsigned char type; };
+    template <> struct make_unsigned<unsigned short>     { typedef unsigned short type; };
+    template <> struct make_unsigned<unsigned int>       { typedef unsigned int type; };
+    template <> struct make_unsigned<unsigned long>      { typedef unsigned long type; };
+    template <> struct make_unsigned<unsigned long long> { typedef unsigned long long type; };
+    template <> struct make_unsigned<char>               { typedef unsigned char type; };
+    #if defined _WIN32 || defined _WIN64
+    template <> struct make_unsigned<wchar_t>            { typedef unsigned short type; };
+    #else
+    template <> struct make_unsigned<wchar_t>            { typedef unsigned int type; };
+    #endif
+    template <typename T> struct make_signed;
+    template <> struct make_signed<signed char>        { typedef signed char type; };
+    template <> struct make_signed<signed short>       { typedef signed short type; };
+    template <> struct make_signed<signed int>         { typedef signed int type; };
+    template <> struct make_signed<signed long>        { typedef signed long type; };
+    template <> struct make_signed<signed long long>   { typedef signed long long type; };
+    template <> struct make_signed<unsigned char>      { typedef signed char type; };
+    template <> struct make_signed<unsigned short>     { typedef signed short type; };
+    template <> struct make_signed<unsigned int>       { typedef signed int type; };
+    template <> struct make_signed<unsigned long>      { typedef signed long type; };
+    template <> struct make_signed<unsigned long long> { typedef signed long long type; };
+    template <> struct make_signed<char>               { typedef signed char type; };
+    #if defined _WIN32 || defined _WIN64
+    template <> struct make_signed<wchar_t>            { typedef signed short type; };
+    #else
+    template <> struct make_signed<wchar_t>            { typedef signed int type; };
+    #endif
+    }  // namespace std
+    #endif // c++11
 )";
 
     // TODO: INT_FAST8_MAX et al. and a few other misc constants
     static const char* jitsafe_header_stdint_h =
-        "#ifndef __STDINT_HEADER\n"
-        "#define __STDINT_HEADER\n"
+        "#pragma once\n"
         "#include <climits>\n"
         "namespace __jitify_stdint_ns {\n"
         "typedef signed char      int8_t;\n"
@@ -618,13 +633,11 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
         "#define SIZE_MAX    UINT64_MAX\n"
         "} // namespace __jitify_stdint_ns\n"
         "namespace std { using namespace __jitify_stdint_ns; }\n"
-        "using namespace __jitify_stdint_ns;\n"
-        "#endif";
+        "using namespace __jitify_stdint_ns;\n";
 
     // TODO: offsetof
     static const char* jitsafe_header_stddef_h =
-        "#ifndef __STDDEF_HEADER\n"
-        "#define __STDDEF_HEADER\n"
+        "#pragma once\n"
         "#include <climits>\n"
         "namespace __jitify_stddef_ns {\n"
         "#if __cplusplus >= 201103L\n"
@@ -653,8 +666,77 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
         "  using ::ptrdiff_t;\n"
         "  using namespace __jitify_stddef_ns;\n"
         "} // namespace std\n"
-        "using namespace __jitify_stddef_ns;\n"
-        "#endif\n";
+        "using namespace __jitify_stddef_ns;\n";
+
+    static const char* jitsafe_header_stdlib_h =
+        "#pragma once\n"
+        "#include <stddef.h>\n";
+    static const char* jitsafe_header_stdio_h =
+        "#pragma once\n"
+        "#include <stddef.h>\n"
+        "#define FILE int\n"
+        "int fflush ( FILE * stream );\n"
+        "int fprintf ( FILE * stream, const char * format, ... );\n";
+
+    static const char* jitsafe_header_string_h =
+        "#pragma once\n"
+        "char* strcpy ( char * destination, const char * source );\n"
+        "int strcmp ( const char * str1, const char * str2 );\n"
+        "char* strerror( int errnum );\n";
+
+    static const char* jitsafe_header_cstring =
+        "#pragma once\n"
+        "\n"
+        "namespace __jitify_cstring_ns {\n"
+        "char* strcpy ( char * destination, const char * source );\n"
+        "int strcmp ( const char * str1, const char * str2 );\n"
+        "char* strerror( int errnum );\n"
+        "} // namespace __jitify_cstring_ns\n"
+        "namespace std { using namespace __jitify_cstring_ns; }\n"
+        "using namespace __jitify_cstring_ns;\n";
+
+    // HACK TESTING (WAR for cub)
+    static const char* jitsafe_header_iostream =
+        "#pragma once\n"
+        "#include <ostream>\n"
+        "#include <istream>\n";
+    // HACK TESTING (WAR for Thrust)
+    static const char* jitsafe_header_ostream =
+        "#pragma once\n"
+        "\n"
+        "namespace std {\n"
+        "template<class CharT,class Traits=void>\n"  // = std::char_traits<CharT>
+                                                     // >\n"
+        "struct basic_ostream {\n"
+        "};\n"
+        "typedef basic_ostream<char> ostream;\n"
+        "ostream& endl(ostream& os);\n"
+        "ostream& operator<<( ostream&, ostream& (*f)( ostream& ) );\n"
+        "template< class CharT, class Traits > basic_ostream<CharT, Traits>& endl( "
+        "basic_ostream<CharT, Traits>& os );\n"
+        "template< class CharT, class Traits > basic_ostream<CharT, Traits>& "
+        "operator<<( basic_ostream<CharT,Traits>& os, const char* c );\n"
+        "#if __cplusplus >= 201103L\n"
+        "template< class CharT, class Traits, class T > basic_ostream<CharT, "
+        "Traits>& operator<<( basic_ostream<CharT,Traits>&& os, const T& value );\n"
+        "#endif  // __cplusplus >= 201103L\n"
+        "}  // namespace std\n";
+
+    static const char* jitsafe_header_istream =
+        "#pragma once\n"
+        "\n"
+        "namespace std {\n"
+        "template<class CharT,class Traits=void>\n"  // = std::char_traits<CharT>
+                                                     // >\n"
+        "struct basic_istream {\n"
+        "};\n"
+        "typedef basic_istream<char> istream;\n"
+        "}  // namespace std\n";
+
+    static const char* jitsafe_header_sstream =
+        "#pragma once\n"
+        "#include <ostream>\n"
+        "#include <istream>\n";
 
     static const char* jitsafe_header_utility =
         "#pragma once\n"
@@ -673,6 +755,43 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
         "pair<T1,T2> make_pair(T1 const& first, T2 const& second) {\n"
         "	return pair<T1,T2>(first, second);\n"
         "}\n"
+        "}  // namespace std\n";
+
+    // TODO: incomplete
+    static const char* jitsafe_header_vector =
+        "#pragma once\n"
+        "namespace std {\n"
+        "template<class T, class Allocator=void>\n"  // = std::allocator> \n"
+        "struct vector {\n"
+        "};\n"
+        "}  // namespace std\n";
+
+    // TODO: incomplete
+    static const char* jitsafe_header_string =
+        "#pragma once\n"
+        "namespace std {\n"
+        "template<class CharT,class Traits=void,class Allocator=void>\n"
+        "struct basic_string {\n"
+        "basic_string();\n"
+        "basic_string( const CharT* s );\n"  //, const Allocator& alloc =
+                                             // Allocator() );\n"
+        "const CharT* c_str() const;\n"
+        "bool empty() const;\n"
+        "void operator+=(const char *);\n"
+        "void operator+=(const basic_string &);\n"
+        "};\n"
+        "typedef basic_string<char> string;\n"
+        "}  // namespace std\n";
+
+    // TODO: incomplete
+    static const char* jitsafe_header_stdexcept =
+        "#pragma once\n"
+        "namespace std {\n"
+        "struct runtime_error {\n"
+        "explicit runtime_error( const std::string& what_arg );"
+        "explicit runtime_error( const char* what_arg );"
+        "virtual const char* what() const;\n"
+        "};\n"
         "}  // namespace std\n";
 
     // TODO: incomplete
@@ -713,8 +832,7 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
     // TODO: This is incomplete (missing binary and integer funcs, macros,
     // constants, types)
     static const char* jitsafe_header_math_h =
-        "#ifndef __MATH_HEADER\n"
-        "#define __MATH_HEADER\n"
+        "#pragma once\n"
         "namespace __jitify_math_ns {\n"
         "#if __cplusplus >= 201103L\n"
         "#define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \\\n"
@@ -793,8 +911,27 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
         "namespace std { using namespace __jitify_math_ns; }\n"
         "#define M_PI 3.14159265358979323846\n"
         // Note: Global namespace already includes CUDA math funcs
-        "//using namespace __jitify_math_ns;\n"
-        "#endif\n";
+        "//using namespace __jitify_math_ns;\n";
+
+    static const char* jitsafe_header_memory_h = R"(
+    #pragma once
+    #include <string.h>
+ )";
+
+    // TODO: incomplete
+    static const char* jitsafe_header_mutex = R"(
+    #pragma once
+    #if __cplusplus >= 201103L
+    namespace std {
+    class mutex {
+    public:
+    void lock();
+    bool try_lock();
+    void unlock();
+    };
+    }  // namespace std
+    #endif
+ )";
 
     static const char* jitsafe_header_algorithm = R"(
     #pragma once
@@ -817,26 +954,67 @@ template <> struct make_signed<wchar_t>            { typedef signed int type; };
     #endif
  )";
 
+    static const char* jitsafe_header_time_h = R"(
+    #pragma once
+    #define NULL 0
+    #define CLOCKS_PER_SEC 1000000
+    namespace __jitify_time_ns {
+    typedef long time_t;
+    struct tm {
+      int tm_sec;
+      int tm_min;
+      int tm_hour;
+      int tm_mday;
+      int tm_mon;
+      int tm_year;
+      int tm_wday;
+      int tm_yday;
+      int tm_isdst;
+    };
+    #if __cplusplus >= 201703L
+    struct timespec {
+      time_t tv_sec;
+      long tv_nsec;
+    };
+    #endif
+    }  // namespace __jitify_time_ns
+    namespace std {
+      // NVRTC provides built-in definitions of ::size_t and ::clock_t.
+      using ::size_t;
+      using ::clock_t;
+      using namespace __jitify_time_ns;
+    }
+    using namespace __jitify_time_ns;
+ )";
+
+    static const char* jitsafe_header_tuple = R"(
+    #pragma once
+    #if __cplusplus >= 201103L
+    namespace std {
+    template<class... Types > class tuple;
+    template< size_t I, class T >
+    struct tuple_element;
+    // recursive case
+    template< size_t I, class Head, class... Tail >
+    struct tuple_element<I, tuple<Head, Tail...>>
+        : tuple_element<I-1, tuple<Tail...>> { };
+    // base case
+    template< class Head, class... Tail >
+    struct tuple_element<0, tuple<Head, Tail...>> {
+      using type = Head;
+    };
+    } // namespace std
+    #endif
+ )";
+
+    static const char* jitsafe_header_assert = R"(
+    #pragma once
+ )";
+
     static const char* jitsafe_header_assert_h = R"(
 #ifndef __ASSERT_HEADER
 #define __ASSERT_HEADER
 #include "stddef.h"
 #endif
  )";
-
-    static const char* jitsafe_header_stdio_h = R"(
-#ifndef __STDIO_HEADER
-#define __STDIO_HEADER
-#include "stddef.h"
-#endif
- )";
-
-    static const char* jitsafe_header_stdlib_h = R"(
-#ifndef __STDLIB_HEADER
-#define __STDLIB_HEADER
-#include "stddef.h"
-#endif
- )";
-
-
 }

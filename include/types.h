@@ -7,6 +7,7 @@
 #include <fstream>
 #include <regex>
 #include <filesystem>
+#include <map>
 
 #include <cuda.h>
 #include <nvrtc.h>

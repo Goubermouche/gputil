@@ -128,7 +128,8 @@ int main()
 
 	const gputil::context ctx = gputil::context::create(dev);
 
-	const gputil::program prog = gputil::program::create("kernel.cu");
+	// const gputil::program prog = gputil::program::create("kernel.cu");
+	gputil::create_program("kernel.cu");
 
 	ctx.destroy();
 }
