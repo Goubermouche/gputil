@@ -10,7 +10,7 @@ namespace gputil{
 	public:
 		device() = default;
 
-		static device create(const std::function<u64(const device& device)>& selector);
+		static inline device create(const std::function<u64(const device& device)>& selector);
 
 		/**
 		 * \brief Acquires the requested device property for the device.
@@ -25,7 +25,7 @@ namespace gputil{
 			return static_cast<T>(result);
 		}
 
-		inline constexpr CUdevice get() const {
+		constexpr inline CUdevice get() const {
 			return  m_device;
 		}
 	private:

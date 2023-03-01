@@ -1,5 +1,9 @@
-#include "child_kernel.cu"
+#include <cstdio>
 
-extern "C" __global__ void test_kernel() {
-	child_func();
+__device__ void test() {
+	printf("Mangled kernel function call\n");
+}
+
+__global__ void test_kernel() {
+	test();
 }

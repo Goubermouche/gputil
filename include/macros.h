@@ -14,7 +14,9 @@ namespace gputil {
 	do {                                                                                         \
 		if((cond) == cudaError_enum::CUDA_SUCCESS) {                                             \
 		} else {                                                                                 \
-			printf("CUDA ASSERTION FAILED (%s:%i): %s (%i)\n", __FILE__, __LINE__, #cond, cond); \
+			const char* msg;                                                                     \
+			cuGetErrorName(cond, &msg);                                                           \
+			printf("CUDA ASSERTION FAILED (%s:%i): %s (%s)\n", __FILE__, __LINE__, #cond, msg); \
 			__debugbreak();                                                                      \
 		}                                                                                        \
 	} while(false)

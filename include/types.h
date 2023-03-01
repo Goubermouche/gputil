@@ -8,6 +8,7 @@
 #include <regex>
 #include <filesystem>
 #include <map>
+#include <windows.h>
 
 #include <cuda.h>
 #include <nvrtc.h>
