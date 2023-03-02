@@ -161,6 +161,37 @@ namespace gputil {
         return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     }
 
+    struct kernel_dim {
+        kernel_dim() = default;
+        kernel_dim(const u32 x) : m_dim{ x, 1, 1 } {}
+        kernel_dim(const u32 x, const u32 y) : m_dim{ x, y, 1 } {}
+        kernel_dim(const u32 x, const u32 y, const u32 z) : m_dim{ x, y, z } {}
+
+        u32& operator[](i32 index) { return m_dim[index]; }
+        const u32& operator[](i32 index) const { return m_dim[index]; }
+	private:
+        u32 m_dim[3] = { 1, 1, 1 };
+	};
+
+    struct stream {
+        stream() = default;
+
+        operator CUstream() const {
+            return m_stream;
+        }
+    private:
+        CUstream m_stream = NULL;
+
+        friend struct kernel;
+    };
+
+    struct kernel_options {
+        kernel_dim thread_count = { 1, 1, 1 };
+        kernel_dim block_count = { 1, 1, 1 }; 
+        u32 shared_memory_size = {};           // Dynamic shared-memory size per thread block in bytes
+        stream stream = {};
+	};
+
     struct kernel {
     private:
         kernel() = default;
@@ -284,6 +315,8 @@ namespace gputil {
                 std::vector<void*> jit_option_values;
 
                 if (linker_files.empty()) {
+                    std::cout << "loading program data\n";
+
                     CUDA_ASSERT(cuModuleLoadDataEx(
                         &m_module,
                         ptx.c_str(),
@@ -294,7 +327,7 @@ namespace gputil {
                 }
             	else
                 {
-                    std::cout << "running linker...\n";
+                    std::cout << "running linker\n";
                     CUDA_ASSERT(cuLinkCreate(
                         static_cast<u32>(jit_options.size()),
                         jit_options.data(),
@@ -308,9 +341,9 @@ namespace gputil {
                         (void*)ptx.c_str(),
                         ptx.size(),
                         "jitified_source.ptx",
-                        0,
-                        0,
-                        0
+                        static_cast<u32>(jit_options.size()),
+                        jit_options.data(),
+                        jit_option_values.data()
                     ));
 
                     CUresult cu_result;
@@ -318,13 +351,13 @@ namespace gputil {
                     for (std::string link_file : linker_files) {
                         CUjitInputType jit_input_type;
                         if (link_file == ".") {
-                            // Special case for linking to current executable.
+                            // Special case for linking to current executable
                             link_file = get_current_executable_path();
                             jit_input_type = CU_JIT_INPUT_OBJECT;
                         }
                     	else
                         {
-                            // Infer based on filename.
+                            // Infer from filename 
                             jit_input_type = get_cuda_jit_input_type(&link_file);
                         }
 
@@ -348,8 +381,6 @@ namespace gputil {
                 CUDA_ASSERT(cuModuleGetFunction(&m_kernel, m_module, mangled_instantiation.c_str()));
 
                 std::cout << "kernel compiled successfully\n";
-                std::cout << "instantiation:         " << instantiation << '\n';
-                std::cout << "mangled instantiation: " << mangled_instantiation << '\n';
             }
         	else 
             {
@@ -357,28 +388,29 @@ namespace gputil {
             }
         }
 
-        inline void start_kernel(
-            void** args
-        ) {
+        inline void start_kernel(const kernel_options& options, void** args) {
             CUDA_ASSERT(cuLaunchKernel(
-                m_kernel, // kernel
-                1, 1, 1, // grid dim
-                1, 1, 1, // block dim
-                0, NULL,
+                m_kernel,
+                options.thread_count[0],
+                options.thread_count[1],
+                options.thread_count[2],
+                options.block_count[0],
+                options.block_count[1],
+                options.block_count[2],
+                options.shared_memory_size,
+                options.stream,
                 args, 0
             ));
-
-            CUDA_ASSERT(cuCtxSynchronize());
         }
 	public:
         template<class... Arguments>
-        constexpr inline void start(Arguments&&... args) {
+        constexpr inline void start(const kernel_options& options, Arguments&&... args) {
             if constexpr(sizeof...(Arguments) > 0) {
                 void* pointers[sizeof...(Arguments)] = { &args... };
-                start_kernel(pointers);
+                start_kernel(options, pointers);
             }
             else {
-                start_kernel(nullptr);
+                start_kernel(options, nullptr);
             }
         }
     private:
@@ -473,11 +505,12 @@ namespace gputil {
             compiler_options.push_back("--std=c++20"); 
             compiler_options.push_back("--dopt=on");
 
-            std::cout << "compiler arguments:\n";
+            std::cout << "\ncompiler arguments:\n";
             for(const std::string& option : compiler_options) {
                 std::cout << option << '\n';
             }
 
+            std::cout << "\nadding headers:\n";
             while((result = compile(source, source_file, compiler_options, headers, log, ptx)) == false) {
                 std::string header_name;
 
@@ -508,12 +541,12 @@ namespace gputil {
                     }
                 }
 
-                std::cout << "adding header: " << header_name << '\n';
+                std::cout << header_name << '\n';
                 headers.emplace(std::move(header_name), std::move(header_content));
             }
 
             if(result) {
-                std::cout << "program compiled successfully\n";
+                std::cout << "\nprogram compiled successfully\n";
                 headers.emplace(source_file, std::move(source));
                 return { headers, compiler_options, source_file };
             }

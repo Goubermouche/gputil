@@ -1,6 +1,8 @@
 #include <iostream>
 #include <gputil.h>
 
+#include "structure.h"
+
 int main()
 {
 	CUDA_ASSERT(cuInit(0));
@@ -13,7 +15,16 @@ int main()
 
 	const gputil::program program = gputil::program::create("kernel.cu");
 	gputil::kernel kernel = program.get_kernel("test_kernel");
-	kernel.start(10);
+
+	std::cout << "\nrunning kernel:\n";
+
+	kernel.start({
+		.thread_count = 2,
+		.block_count = 2,
+		.shared_memory_size = 100
+	}, my_struct{ 99 }, 10);
+
+	CUDA_ASSERT(cuCtxSynchronize());
 
 	ctx.destroy();
 	return 0;

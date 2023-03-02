@@ -144,10 +144,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\gputil.h" />
+    <ClInclude Include="structure.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="child_child_kernel.cu" />
-    <None Include="child_kernel.cu" />
     <None Include="kernel.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

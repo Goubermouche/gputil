@@ -31,10 +31,11 @@
     <ClInclude Include="include\gputil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="structure.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="kernel.cu" />
-    <None Include="child_kernel.cu" />
-    <None Include="child_child_kernel.cu" />
   </ItemGroup>
 </Project>
