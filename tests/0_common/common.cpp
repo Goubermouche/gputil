@@ -11,8 +11,9 @@ int main()
 
 	const gputil::context ctx = gputil::context::create(dev);
 
-	gputil::program program = gputil::program::create("kernel.cu", { "--dopt=on"});
+	const gputil::program program = gputil::program::create("kernel.cu");
 	gputil::kernel kernel = program.get_kernel("test_kernel");
+	kernel.start(10);
 
 	ctx.destroy();
 	return 0;

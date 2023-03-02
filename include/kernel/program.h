@@ -350,21 +350,35 @@ namespace gputil {
                 std::cout << "kernel compiled successfully\n";
                 std::cout << "instantiation:         " << instantiation << '\n';
                 std::cout << "mangled instantiation: " << mangled_instantiation << '\n';
-                std::cout << "-----------------------\n";
-
-                CUDA_ASSERT(cuLaunchKernel(
-                    m_kernel, // kernel
-                    1, 1, 1, // grid dim
-                    1, 1, 1, // block dim
-                    0, NULL, // shared mem and stream
-                    0, 0     // arguments
-                ));
-
-                CUDA_ASSERT(cuCtxSynchronize());
             }
         	else 
             {
                 throw std::runtime_error("encountered an unknown error during kernel compilation: \n" + log);
+            }
+        }
+
+        inline void start_kernel(
+            void** args
+        ) {
+            CUDA_ASSERT(cuLaunchKernel(
+                m_kernel, // kernel
+                1, 1, 1, // grid dim
+                1, 1, 1, // block dim
+                0, NULL,
+                args, 0
+            ));
+
+            CUDA_ASSERT(cuCtxSynchronize());
+        }
+	public:
+        template<class... Arguments>
+        constexpr inline void start(Arguments&&... args) {
+            if constexpr(sizeof...(Arguments) > 0) {
+                void* pointers[sizeof...(Arguments)] = { &args... };
+                start_kernel(pointers);
+            }
+            else {
+                start_kernel(nullptr);
             }
         }
     private:
@@ -456,7 +470,8 @@ namespace gputil {
             bool result;
 
             compiler_options.push_back("--device-as-default-execution-space");
-            compiler_options.push_back("--std=c++20");
+            compiler_options.push_back("--std=c++20"); 
+            compiler_options.push_back("--dopt=on");
 
             std::cout << "compiler arguments:\n";
             for(const std::string& option : compiler_options) {
