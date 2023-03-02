@@ -1,53 +1,17 @@
 #pragma once
 
 #include "headers.h"
+#include "stream.h"
 
 #define MAX_PATH 260
 
 namespace gputil {
-	namespace detail {
-        static const std::unordered_map<std::string, std::string> s_jitsafe_headers = {
-            { "float.h",     jitsafe_header_float_h     },
-            { "limits.h",    jitsafe_header_limits_h    },
-            { "stdint.h",    jitsafe_header_stdint_h    },
-            { "stddef.h",    jitsafe_header_stddef_h    },
-            { "stdio.h",     jitsafe_header_stdio_h     },
-            { "iterator",    jitsafe_header_iterator    },
-            { "limits",      jitsafe_header_limits      },
-            { "type_traits", jitsafe_header_type_traits },
-            { "utility",     jitsafe_header_utility     },
-            { "math.h",      jitsafe_header_math_h      },
-            { "complex",     jitsafe_header_complex     },
-            { "algorithm",   jitsafe_header_algorithm   },
-            { "stdlib.h",    jitsafe_header_stdlib_h    },
-            { "assert.h",    jitsafe_header_assert_h    },
-            { "iostream",    jitsafe_header_iostream    },
-            { "cfloat",      jitsafe_header_float_h     },
-            { "cassert",     jitsafe_header_assert_h    },
-            { "cstdlib",     jitsafe_header_stdlib_h    },
-            { "cmath",       jitsafe_header_math_h      },
-            { "cstdio",      jitsafe_header_stdio_h     },
-            { "cstddef",     jitsafe_header_stddef_h    },
-            { "cstdint",     jitsafe_header_stdint_h    },
-            { "climits",     jitsafe_header_limits_h    }
-        };
-	}
-   
-    inline const char* get_current_executable_path() {
-        static char buffer[MAX_PATH] = {};
-
-#ifdef __linux__
-        if (!::realpath("/proc/self/exe", buffer)) {
-            return nullptr;
-        }
-#elif defined(_WIN32) || defined(_WIN64)
-        if (!GetModuleFileNameA(nullptr, buffer, MAX_PATH)) {
-            return nullptr;
-        }
-#endif
-        return buffer;
-    }
-
+    /**
+     * \brief Extracts a set of linker files and paths from the given list of compiler options.
+     * \param compiler_options Compiler options to located the linker options in
+     * \param linker_files Output linker files
+     * \param linker_paths Output linker paths
+     */
     inline void extract_linker_data_from_compiler_options(
         const std::vector<std::string>& compiler_options,
         std::vector<std::string>& linker_files,
@@ -66,65 +30,12 @@ namespace gputil {
         }
     }
 
-    constexpr inline bool ends_with(const std::string& str, const std::string& suffix) {
-        return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
-    }
-
     /**
-     * \brief Infers the JIT input type from the filename suffix. If no known suffix is present, the filename is assumed to refer to a library, and the associated suffix (and possibly prefix) is automatically added to the filename.
-     * \param filename Filename to check
-     * \returns Inferred CUjitInputType
-     */
-    constexpr inline CUjitInputType get_cuda_jit_input_type(std::string* filename) {
-        if (ends_with(*filename, ".ptx")) {
-            return CU_JIT_INPUT_PTX;
-        }
-        else if (ends_with(*filename, ".cubin")) {
-            return CU_JIT_INPUT_CUBIN;
-        }
-        else if (ends_with(*filename, ".fatbin")) {
-            return CU_JIT_INPUT_FATBINARY;
-        }
-        else if (ends_with(*filename,
-#if defined _WIN32 || defined _WIN64
-            ".obj"
-#else  // Linux
-            ".o"
-#endif
-        )) {
-            return CU_JIT_INPUT_OBJECT;
-        }
-        else {  // Assume library
-#if defined _WIN32 || defined _WIN64
-            if (!ends_with(*filename, ".lib")) {
-                *filename += ".lib";
-            }
-#else  // Linux
-            if (!ends_with(*filename, ".a")) {
-                *filename = "lib" + *filename + ".a";
-            }
-#endif
-            return CU_JIT_INPUT_LIBRARY;
-        }
-    }
-
-    constexpr inline std::string path_join(std::string p1, std::string p2) {
-#ifdef _WIN32
-        char sep = '\\';
-#else
-        char sep = '/';
-#endif
-        if (p1.size() && p2.size() && p2[0] == sep) {
-            throw std::invalid_argument("cannot join to absolute path");
-        }
-
-        if (p1.size() && p1[p1.size() - 1] != sep) {
-            p1 += sep;
-        }
-
-        return p1 + p2;
-    }
-
+	 * \brief Extracts the header name from a header-related compiler error.
+	 * \param log Log to find the header name in
+	 * \param name Output header name
+	 * \returns True, if the operation was successful, otherwise false
+	 */
     inline bool extract_include_info_from_compile_error(std::string log, std::string& name) {
     	static const std::vector<std::string> pattern = {
             "could not open source file \"",
@@ -156,11 +67,9 @@ namespace gputil {
         return false;
     }
 
-    inline std::string read_file(const std::string& file_location) {
-        std::ifstream file(file_location);
-        return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    }
-
+    /**
+     * \brief 3-component dimension structure, used for storing kernel dimensions.
+     */
     struct kernel_dim {
         kernel_dim() = default;
         kernel_dim(const u32 x) : m_dim{ x, 1, 1 } {}
@@ -173,29 +82,33 @@ namespace gputil {
         u32 m_dim[3] = { 1, 1, 1 };
 	};
 
-    struct stream {
-        stream() = default;
-
-        operator CUstream() const {
-            return m_stream;
-        }
-    private:
-        CUstream m_stream = NULL;
-
-        friend struct kernel;
-    };
-
+    /**
+     * \brief Kernel options structure, supplied to the \a kernel structure when running it.
+     */
     struct kernel_options {
-        kernel_dim thread_count = { 1, 1, 1 };
-        kernel_dim block_count = { 1, 1, 1 }; 
+        kernel_dim thread_count = { 1, 1, 1 }; // Number of threads to start in each dimension (default {1, 1, 1})
+        kernel_dim block_count = { 1, 1, 1 };  // Number of blocks to start in each dimension (default {1, 1, 1})
         u32 shared_memory_size = {};           // Dynamic shared-memory size per thread block in bytes
-        stream stream = {};
+        stream stream = {};                    // Execution stream
 	};
 
+    /**
+     * \brief Kernel structure; contains information about, and wraps around the CUDA driver API's kernel.
+     */
     struct kernel {
     private:
         kernel() = default;
 
+        /**
+	     * \brief Compiles the kernel.
+         * \param program_name Name of the source program (program filepath)
+         * \param sources Headers to include when compiling, includes the source files of the kernel itself
+         * \param instantiation Unmangled kernel symbol
+         * \param log Output compilation log
+         * \param ptx Output PTX
+         * \param mangled_instantiation Output mangled version of the specified instantiation
+         * \returns True if the compilation was successful, otherwise False
+	     */
         inline bool compile(
             const std::string& program_name,
             const std::unordered_map<std::string, std::string>& sources,
@@ -208,6 +121,14 @@ namespace gputil {
             std::string program_source = sources.at(program_name);
             i32 header_count = static_cast<i32>(sources.size() - 1);
 
+            // TODO: store compiler options as a vector<const char*> (?)
+			// convert compiler options to const char*
+            std::vector<const char*> compiler_options_char(compiler_options.size());
+            for (u64 i = 0; i < compiler_options.size(); i++) {
+                compiler_options_char[i] = compiler_options[i].c_str();
+            }
+
+            // convert headers to const char*
             std::vector<const char*> header_names_char;
             std::vector<const char*> header_sources_char;
 
@@ -226,13 +147,8 @@ namespace gputil {
                 header_sources_char.push_back(code.c_str());
             }
 
-            std::vector<const char*> compiler_options_char(compiler_options.size());
-            for (u64 i = 0; i < compiler_options.size(); i++) {
-                compiler_options_char[i] = compiler_options[i].c_str();
-            }
-
+            // create the NVRTC program
             nvrtcProgram nvrtc_program;
-
             NVRTC_ASSERT(nvrtcCreateProgram(
                 &nvrtc_program,
                 program_source.c_str(),
@@ -246,12 +162,14 @@ namespace gputil {
                 NVRTC_ASSERT(nvrtcAddNameExpression(nvrtc_program, instantiation.c_str()));
             }
 
+            // compile the program
             nvrtcResult result = nvrtcCompileProgram(
                 nvrtc_program,
                 static_cast<i32>(compiler_options_char.size()),
                 compiler_options_char.data()
             );
 
+            // extract the compilation log
             u64 log_size = 0;
             NVRTC_ASSERT(nvrtcGetProgramLogSize(nvrtc_program, &log_size));
             log.resize(log_size + 1);
@@ -261,11 +179,13 @@ namespace gputil {
                 return false;
             }
 
+            // extract the PTX string
             u64 ptx_size;
             NVRTC_ASSERT(nvrtcGetPTXSize(nvrtc_program, &ptx_size));
             ptx.resize(ptx_size + 1);
             NVRTC_ASSERT(nvrtcGetPTX(nvrtc_program, ptx.data()));
 
+            // unmangle the symbol name
             if (instantiation.empty() == false) {
                 const char* mangled_instantiation_cstr;
 
@@ -281,11 +201,18 @@ namespace gputil {
             return true;
         }
 
+        /**
+	     * \brief Constructs a kernel located under \a symbol.
+         * \param symbol Kernel symbol
+         * \param headers Headers to include during compilation
+         * \param compiler_options Compiler options to use when compiling
+         * \param source_file_filepath Filepath of the kernel source file 
+	     */
         kernel(
             const std::string& symbol,
             const std::unordered_map<std::string, std::string>& headers,
             const std::vector<std::string>& compiler_options,
-            const std::string& source_file
+            const std::string& source_file_filepath
         ) {
             std::vector<std::string> linker_files;
             std::vector<std::string> linker_paths;
@@ -301,8 +228,9 @@ namespace gputil {
                 linker_paths
             );
 
+            // compile the kernel
             if(compile(
-                source_file,
+                source_file_filepath,
                 headers,
                 compiler_options,
                 instantiation,
@@ -314,9 +242,10 @@ namespace gputil {
                 std::vector<CUjit_option> jit_options;
                 std::vector<void*> jit_option_values;
 
+                // link files? 
                 if (linker_files.empty()) {
+                    // no linking required, just load the PTX
                     std::cout << "loading program data\n";
-
                     CUDA_ASSERT(cuModuleLoadDataEx(
                         &m_module,
                         ptx.c_str(),
@@ -327,6 +256,7 @@ namespace gputil {
                 }
             	else
                 {
+                    // link the PTX with the linker files
                     std::cout << "running linker\n";
                     CUDA_ASSERT(cuLinkCreate(
                         static_cast<u32>(jit_options.size()),
@@ -351,13 +281,13 @@ namespace gputil {
                     for (std::string link_file : linker_files) {
                         CUjitInputType jit_input_type;
                         if (link_file == ".") {
-                            // Special case for linking to current executable
+                            // special case for linking to current executable
                             link_file = get_current_executable_path();
                             jit_input_type = CU_JIT_INPUT_OBJECT;
                         }
                     	else
                         {
-                            // Infer from filename 
+                            // infer from filename 
                             jit_input_type = get_cuda_jit_input_type(&link_file);
                         }
 
@@ -378,16 +308,20 @@ namespace gputil {
                     CUDA_ASSERT(cuModuleLoadData(&m_module, cubin));
                 }
 
+                // extract the kernel 
                 CUDA_ASSERT(cuModuleGetFunction(&m_kernel, m_module, mangled_instantiation.c_str()));
-
                 std::cout << "kernel compiled successfully\n";
             }
-        	else 
-            {
+        	else {
                 throw std::runtime_error("encountered an unknown error during kernel compilation: \n" + log);
             }
         }
 
+        /**
+         * \brief Starts the kernel using the specified \a options and \a arguments.
+         * \param options Kernel options struct
+         * \param args Kernel arguments
+         */
         inline void start_kernel(const kernel_options& options, void** args) {
             CUDA_ASSERT(cuLaunchKernel(
                 m_kernel,
@@ -403,6 +337,12 @@ namespace gputil {
             ));
         }
 	public:
+        /**
+		 * \brief Starts the kernel using the specified \a options and \a arguments.
+		 * \tparam Arguments kernel arguments
+		 * \param options Kernel options struct to use for kernel initialization
+		 * \param args Kernel arguments
+		 */
         template<class... Arguments>
         constexpr inline void start(const kernel_options& options, Arguments&&... args) {
             if constexpr(sizeof...(Arguments) > 0) {
@@ -421,15 +361,33 @@ namespace gputil {
         friend struct program;
     };
 
+    /**
+     * \brief Program structure; contains information about, and wraps around the CUDA driver API's module.
+     */
     struct program {
     private:
         program() = default;
+
+        /**
+	     * \brief Constructs the program.
+	     * \param headers Included headers
+	     * \param compiler_options Used compiler options
+	     * \param source_file Program source file
+	     */
         program(
             const std::unordered_map<std::string, std::string>& headers,
             const std::vector<std::string>& compiler_options,
             const std::string& source_file
         ) : m_headers(headers), m_compiler_options(compiler_options), m_source_file(source_file) {}
 
+        /**
+         * \brief Compiles the CUDA module
+         * \param source Program source
+         * \param source_file Program filepath
+         * \param compiler_options Compiler options to supply to the compiler
+         * \param log Output compilation log
+         * \param ptx Output PTX
+         */
         static inline bool compile(
             const std::string& source,
             const std::string& source_file,
@@ -438,11 +396,14 @@ namespace gputil {
             std::string& log,
             std::string& ptx
         ) {
+            // TODO: store compiler options as a vector<const char*> (?)
+            // convert compiler options to const char* 
             std::vector<const char*> compiler_options_char(compiler_options.size());
             for (u64 i = 0; i < compiler_options.size(); i++) {
                 compiler_options_char[i] = compiler_options[i].c_str();
             }
 
+            // convert headers to const char* 
             std::vector<const char*> header_names_char;
             std::vector<const char*> header_content_char;
 
@@ -454,8 +415,8 @@ namespace gputil {
                 header_content_char.push_back(header.second.c_str());
             }
 
+            // create an NVRTC program
             nvrtcProgram nvrtc_program;
-
             NVRTC_ASSERT(nvrtcCreateProgram(
                 &nvrtc_program,
                 source.c_str(),
@@ -465,6 +426,7 @@ namespace gputil {
                 header_names_char.data())
             );
 
+            // compile the program
             nvrtcResult result = nvrtcCompileProgram(
                 nvrtc_program,
                 static_cast<i32>(compiler_options_char.size()),
@@ -475,6 +437,7 @@ namespace gputil {
                 NVRTC_ASSERT(result);
             }
 
+            // extract the compilation log
             u64 log_size = 0;
             NVRTC_ASSERT(nvrtcGetProgramLogSize(nvrtc_program, &log_size));
             log.resize(log_size + 1);
@@ -484,6 +447,7 @@ namespace gputil {
                 return false;
             }
 
+            // extract the PTX string
             u64 ptx_size;
             NVRTC_ASSERT(nvrtcGetPTXSize(nvrtc_program, &ptx_size));
             ptx.resize(ptx_size + 1);
@@ -491,6 +455,11 @@ namespace gputil {
             return true;
         }
     public:
+        /**
+         * \brief Creates a new program using the provided  \a source_file.
+         * \param source_file Program filepath
+         * \param compiler_options Compiler options to give to the compiler (note that the following options are already used by default: --device-as-default-execution-space, --std=c++20, --dopt=on)
+         */
         static inline program create(
             const std::string& source_file,
             std::vector<std::string> compiler_options = {}
@@ -501,6 +470,7 @@ namespace gputil {
             std::string ptx;
             bool result;
 
+            // insert default compiler arguments
             compiler_options.push_back("--device-as-default-execution-space");
             compiler_options.push_back("--std=c++20"); 
             compiler_options.push_back("--dopt=on");
@@ -511,27 +481,28 @@ namespace gputil {
             }
 
             std::cout << "\nadding headers:\n";
+            // extract the icluded headers
             while((result = compile(source, source_file, compiler_options, headers, log, ptx)) == false) {
                 std::string header_name;
 
                 if (!extract_include_info_from_compile_error(log, header_name)) {
-                    break; // Not a header-related error
+                    break; // not a header-related error
                 }
 
-                // Header already loaded. Something is wrong
+                // header already loaded. Something is wrong
                 if (headers.count(header_name) > 0) {
                     break;
                 }
 
-                // Load missing header file
+                // load missing header file
                 std::string header_content;
 
-                // Check if the file is jitsafe
+                // check if the file is jitsafe
                 if (detail::s_jitsafe_headers.contains(header_name)) {
                     header_content = detail::s_jitsafe_headers.at(header_name);
                 }
             	else {
-                    // If its not, check if its a regular header file
+                    // if its not, check if its a regular header file
                     try {
                         std::ifstream header_file(header_name);
                         header_content = std::string((std::istreambuf_iterator<char>(header_file)), std::istreambuf_iterator<char>());
@@ -555,6 +526,11 @@ namespace gputil {
             }
         }
 
+        /**
+         * \brief Creates a new kernel structure using the compiled program.
+         * \param symbol Kernel symbol.
+         * \returns Kernel located under \a symbol
+         */
         inline kernel get_kernel(const std::string& symbol) const {
             return { symbol, m_headers, m_compiler_options, m_source_file };
         }
