@@ -3,8 +3,6 @@
 #include "headers.h"
 #include "stream.h"
 
-#define MAX_PATH 260
-
 namespace gputil {
     /**
      * \brief Extracts a set of linker files and paths from the given list of compiler options.
@@ -282,20 +280,20 @@ namespace gputil {
                         CUjitInputType jit_input_type;
                         if (link_file == ".") {
                             // special case for linking to current executable
-                            link_file = get_current_executable_path();
+                            link_file = detail::get_current_executable_path();
                             jit_input_type = CU_JIT_INPUT_OBJECT;
                         }
                     	else
                         {
                             // infer from filename 
-                            jit_input_type = get_cuda_jit_input_type(&link_file);
+                            jit_input_type = detail::get_cuda_jit_input_type(&link_file);
                         }
 
                         cu_result = cuLinkAddFile(m_link_state, jit_input_type, link_file.c_str(), 0, 0, 0);
                         u64 path_count = 0;
 
                         while (cu_result == CUDA_ERROR_FILE_NOT_FOUND && path_count < (int)linker_paths.size()) {
-                            std::string filename = path_join(linker_paths[path_count++], link_file);
+                            std::string filename = detail::path_join(linker_paths[path_count++], link_file);
                             cu_result = cuLinkAddFile(m_link_state, jit_input_type, filename.c_str(), 0, 0, 0);
                         }
 
@@ -465,7 +463,7 @@ namespace gputil {
             std::vector<std::string> compiler_options = {}
         ) {
             std::unordered_map<std::string, std::string> headers;
-            std::string source = read_file(source_file);
+            std::string source = detail::read_file(source_file);
             std::string log;
             std::string ptx;
             bool result;
@@ -480,8 +478,9 @@ namespace gputil {
                 std::cout << option << '\n';
             }
 
-            std::cout << "\nadding headers:\n";
+            // TODO: extract additional include directories from the solution file and check them when compiling
             // extract the icluded headers
+            std::cout << "\nadding headers:\n";
             while((result = compile(source, source_file, compiler_options, headers, log, ptx)) == false) {
                 std::string header_name;
 
@@ -504,8 +503,7 @@ namespace gputil {
             	else {
                     // if its not, check if its a regular header file
                     try {
-                        std::ifstream header_file(header_name);
-                        header_content = std::string((std::istreambuf_iterator<char>(header_file)), std::istreambuf_iterator<char>());
+                        header_content = detail::read_file(header_name);
                     }
                     catch (const std::exception& e) {
                         std::cout << "retrying compilation after error: " << e.what() << std::endl;
@@ -522,7 +520,8 @@ namespace gputil {
                 return { headers, compiler_options, source_file };
             }
             else {
-                throw std::runtime_error("encountered an unknown error during program compilation: \n" + log);
+                ASSERT(false, log.c_str());
+                return {};
             }
         }
 

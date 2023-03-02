@@ -6,6 +6,8 @@ namespace gputil {
 	using namespace gputil::types;
 }
 
+#define MAX_PATH 260
+
 /**
  * \brief CUDA assertion macro, asserts whenever \a cond does not evaluate to CUDA_SUCCESS and prints the relevant error message retrieved from CUDA.
  * \param cond Condition to evaluate

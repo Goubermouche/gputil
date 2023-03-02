@@ -53,7 +53,7 @@ namespace gputil{
 			multiprocessor_count         = get_device_property<u32>(device_property::multiprocessor_count);
 			memory_clock_rate            = get_device_property<u32>(device_property::memory_clock_rate);
 			theoretical_memory_bandwidth = static_cast<u64>(memory_clock_rate * 1e3 * (memory_bus_width / 8) * 2);
-			core_count                   = calculate_cuda_core_count(multiprocessor_count, compute_capability);
+			core_count                   = detail::calculate_cuda_core_count(multiprocessor_count, compute_capability);
 		}
 	public:
 		std::string name = {};

@@ -15,14 +15,8 @@ int main()
 
 	const gputil::program program = gputil::program::create("kernel.cu");
 	gputil::kernel kernel = program.get_kernel("test_kernel");
-
 	std::cout << "\nrunning kernel:\n";
-
-	kernel.start({
-		.thread_count = 2,
-		.block_count = 2,
-		.shared_memory_size = 100
-	}, my_struct{ 99 }, 10);
+	kernel.start({}, my_struct{ 99 }, 10);
 
 	CUDA_ASSERT(cuCtxSynchronize());
 

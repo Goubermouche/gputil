@@ -2,7 +2,7 @@
 
 #include "macros.h"
 
-namespace gputil {
+namespace gputil::detail {
 	/**
 	 * \brief Formats the given /a byte_count into a string containing the appropriate file size extension.
 	 * \param byte_count Count of bytes to format

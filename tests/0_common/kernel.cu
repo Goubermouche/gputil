@@ -1,4 +1,3 @@
-#include <cstdio>
 #include "structure.h"
 
 __device__ void test() {
