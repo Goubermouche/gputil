@@ -21,5 +21,6 @@ int main()
 	CUDA_ASSERT(cuCtxSynchronize());
 
 	ctx.destroy();
+
 	return 0;
 }
