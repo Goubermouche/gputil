@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "macros.h"
+
 namespace gputil {
 	namespace types {
 		// Unsigned 
@@ -33,20 +35,3 @@ namespace gputil {
 
 	using namespace gputil::types;
 }
-
-
-#if !defined(__CUDACC__) && !defined(__host__)
-#define __host__ 
-#endif
-
-#if !defined(__CUDACC__) && !defined(__device__)
-#define __device__ 
-#endif
-
-#if !defined(__CUDACC__) && !defined(__global__)
-#define __global__ 
-#endif
-
-#define HOST __host__
-#define DEVICE __device__
-#define GLOBAL __global__
