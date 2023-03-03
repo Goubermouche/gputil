@@ -4,7 +4,7 @@ namespace gputil {
     struct stream {
         stream() = default;
 
-        operator CUstream() const {
+        constexpr inline operator CUstream() const {
             return m_stream;
         }
     private:

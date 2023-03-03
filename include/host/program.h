@@ -492,12 +492,15 @@ namespace gputil {
             std::string ptx;
             bool result;
 
+            static const std::vector<std::string> default_compiler_options = {
+                "--device-as-default-execution-space",
+                "--std=c++20",
+                "--dopt=on",
+                "--include-path=C:\\dev\\projects\\gputil\\gputil\\include" // TODO: extract the include path from the visual studio solution file (?)
+            };
+
             // insert default compiler arguments
-            compiler_options.emplace_back("--device-as-default-execution-space");
-            compiler_options.emplace_back("--std=c++20");
-            compiler_options.emplace_back("--dopt=on");
-            // TODO: extract the include path from the visual studio solution file (?)
-            compiler_options.emplace_back("--include-path=C:\\dev\\projects\\gputil\\gputil\\include");
+            compiler_options.insert(compiler_options.end(), default_compiler_options.begin(), default_compiler_options.end());
 
             // std::vector<std::string> include_directories;
             // extract_include_directories_from_compiler_options(compiler_options, include_directories);

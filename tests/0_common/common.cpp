@@ -8,7 +8,7 @@ int main()
 	CUDA_ASSERT(cuInit(0));
 
 	const gputil::device dev = gputil::device::create([](const gputil::device& device) {
-		return device.theoretical_memory_bandwidth;
+		return device.get_theoretical_memory_bandwidth();
 	});
 
 	const gputil::context ctx = gputil::context::create(dev);

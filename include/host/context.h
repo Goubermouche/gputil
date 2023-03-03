@@ -37,7 +37,7 @@ namespace gputil {
 	 */
 	inline context context::create(const device& device, const context_flag flags) {
 		CUcontext cu_context;
-		CUDA_ASSERT(cuCtxCreate(&cu_context, static_cast<u32>(flags), device.get()));
+		CUDA_ASSERT(cuCtxCreate(&cu_context, static_cast<u32>(flags), device));
 
 		return context(cu_context);
 	}

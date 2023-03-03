@@ -1,7 +1,7 @@
 #include "structure.h"
 #include "iostream"
 
-DEVICE void test() {
+inline DEVICE void test() {
 	printf("Mangled kernel function call\n");
 }
 
