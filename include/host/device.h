@@ -12,7 +12,7 @@ namespace gputil{
 
 		static inline device create(const std::function<u64(const device& device)>& selector);
 
-		constexpr inline operator CUdevice() const {
+		constexpr operator CUdevice() const {
 			return m_device;
 		}
 
@@ -29,55 +29,55 @@ namespace gputil{
 			return static_cast<T>(result);
 		}
 
-		constexpr inline const std::string& get_name() const {
+		constexpr const std::string& get_name() const {
 			return m_name;
 		}
 
-		constexpr inline const compute_capability& get_compute_capability() const {
+		constexpr const compute_capability& get_compute_capability() const {
 			return m_compute_capability;
 		}
 
-		constexpr inline const u32 get_constant_memory() const {
+		constexpr const u32 get_constant_memory() const {
 			return m_constant_memory;
 		}
 
-		constexpr inline const u32 get_shared_memory_per_block() const {
+		constexpr const u32 get_shared_memory_per_block() const {
 			return m_shared_memory_per_block;
 		}
 
-		constexpr inline const u32 get_max_threads_per_block() const {
+		constexpr const u32 get_max_threads_per_block() const {
 			return m_max_threads_per_block;
 		}
 
-		constexpr inline const u32 get_clock_rate() const {
+		constexpr const u32 get_clock_rate() const {
 			return m_clock_rate;
 		}
 
-		constexpr inline const bool has_unified_addressing() const {
+		constexpr const bool has_unified_addressing() const {
 			return m_unified_addressing;
 		}
 
-		constexpr inline const bool has_managed_memory() const {
+		constexpr const bool has_managed_memory() const {
 			return m_managed_memory;
 		}
 
-		constexpr inline const u32 get_memory_bus_width() const {
+		constexpr const u32 get_memory_bus_width() const {
 			return m_memory_bus_width;
 		}
 
-		constexpr inline const u32 get_multiprocessor_count() const {
+		constexpr const u32 get_multiprocessor_count() const {
 			return m_multiprocessor_count;
 		}
 
-		constexpr inline const u32 get_core_count() const {
+		constexpr const u32 get_core_count() const {
 			return m_core_count;
 		}
 
-		constexpr inline const u32 get_memory_clock_rate() const {
+		constexpr const u32 get_memory_clock_rate() const {
 			return m_memory_clock_rate;
 		}
 
-		constexpr inline const u64 get_theoretical_memory_bandwidth() const {
+		constexpr const u64 get_theoretical_memory_bandwidth() const {
 			return m_theoretical_memory_bandwidth;
 		}
 	private:

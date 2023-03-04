@@ -1,5 +1,7 @@
 #pragma once
 
+#include "global/vector.h"
+
 #include "headers.h"
 #include "stream.h"
 
@@ -358,6 +360,18 @@ namespace gputil {
                 args, 0
             ));
         }
+
+        template <class T>
+        constexpr void extract_parameter_pack_array(T&& arg, void** pointers, u32& index) const {
+            if constexpr (std::is_base_of_v<gputil_base, std::remove_reference_t<T>>) {
+                std::cout << "[" << index << "] derived (" << typeid(T).name() << ")\n";
+                pointers[index++] = &arg;
+            }
+            else {
+                std::cout << "[" << index << "] regular (" << typeid(T).name() << ")\n";
+                pointers[index++] = &arg;
+            }
+        }
 	public:
         /**
 		 * \brief Starts the kernel using the specified \a options and \a arguments.
@@ -366,10 +380,15 @@ namespace gputil {
 		 * \param args Kernel arguments
 		 */
         template<class... Arguments>
-        constexpr inline void start(const kernel_options& options, Arguments&&... args) {
+        constexpr void start(const kernel_options& options, Arguments&&... args) {
             if constexpr(sizeof...(Arguments) > 0) {
-                void* pointers[sizeof...(Arguments)] = { &args... };
-                start_kernel(options, pointers);
+                void* pointers[sizeof...(Arguments)] = { nullptr };
+                u32 index = 0;
+
+                std::cout << "checking parameter pack:\n";
+                (extract_parameter_pack_array(std::forward<Arguments>(args), pointers, index), ...);
+                std::cout << "\n";
+            	start_kernel(options, pointers);
             }
             else {
                 start_kernel(options, nullptr);

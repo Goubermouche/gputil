@@ -31,7 +31,7 @@ namespace gputil::detail {
 	 * \param minor Minor compute capability version
 	 * \returns Count of CUDA cores on the specified architecture
 	 */
-	constexpr inline u32 calculate_cuda_core_count(const u32 multiprocessor_count, const compute_capability& compute_capability) {
+	constexpr u32 calculate_cuda_core_count(const u32 multiprocessor_count, const compute_capability& compute_capability) {
 		u32 core_count = 0;
 
 		switch (compute_capability.major) {
@@ -140,7 +140,7 @@ namespace gputil::detail {
 	 * \param suffix Suffix to look for
 	 * \returns True if \a str ends with \a suffic, otherwise returns False
 	 */
-	constexpr inline bool ends_with(const std::string& str, const std::string& suffix) {
+	constexpr bool ends_with(const std::string& str, const std::string& suffix) {
 		return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
 	}
 
@@ -149,7 +149,7 @@ namespace gputil::detail {
 	 * \param filename Filename to check
 	 * \returns Inferred CUjitInputType
 	 */
-	constexpr inline CUjitInputType get_cuda_jit_input_type(std::string* filename) {
+	constexpr CUjitInputType get_cuda_jit_input_type(std::string* filename) {
 		if (ends_with(*filename, ".ptx")) {
 			return CU_JIT_INPUT_PTX;
 		}
@@ -186,7 +186,7 @@ namespace gputil::detail {
 	 * \brief Joins \a p1 and \a p2 into a single path.
 	 * \returns Path consisting of the two specified paths
 	 */
-	constexpr inline std::string path_join(std::string p1, std::string p2) {
+	constexpr std::string path_join(std::string p1, std::string p2) {
 #ifdef _WIN32
 		char sep = '\\';
 #else
